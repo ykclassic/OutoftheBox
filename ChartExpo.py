@@ -34,8 +34,8 @@ if uploaded_file:
 
     with st.spinner("Skeptically analyzing the chart..."):
         try:
-            # Upload file to Gemini (handles images/PDFs)
-            uploaded = genai.upload_file(uploaded_file)
+            # Fixed: Specify mime_type when uploading file-like object
+            uploaded = genai.upload_file(uploaded_file, mime_type=uploaded_file.type)
 
             prompt = """
 You are ChartSkeptic — a sharp, unbiased data visualization analyst for investors, journalists, and analysts.
