@@ -1,6 +1,6 @@
 import streamlit as st
 from google.generativeai import GenerativeModel, configure
-from fpdf import FPDF  # For PDF generation (add to requirements.txt)
+from fpdf import FPDF
 import base64
 
 # Secure Gemini API key
@@ -79,23 +79,20 @@ Tone: Confident, authentic, inspiring.
                 st.markdown("### Your FailForward Profile")
                 st.markdown(reverse_resume)
 
-                # PDF Export
-                class PDF(FPDF):
-                    def header(self):
-                        self.set_font('Arial', 'B', 16)
-                        self.cell(0, 10, 'FailForward Profile', ln=1, align='C')
-                        self.ln(10)
-
-                    def chapter_body(self, text):
-                        self.set_font('Arial', '', 12)
-                        self.multi_cell(0, 10, text)
-
-                pdf = PDF()
+                # Fixed PDF Export using fpdf2 (correct handling)
+                pdf = FPDF()
                 pdf.add_page()
-                pdf.chapter_body(reverse_resume)
+                pdf.set_font("Arial", 'B', 16)
+                pdf.cell(0, 10, "FailForward Profile", ln=1, align='C')
+                pdf.ln(10)
+                pdf.set_font("Arial", '', 12)
 
-                pdf_output = pdf.output(dest='S').encode('latin-1')
-                pdf_base64 = base64.b64encode(pdf_output).decode()
+                # Split text into lines and add safely
+                for line in reverse_resume.split('\n'):
+                    pdf.multi_cell(0, 10, line.encode('latin-1', 'replace').decode('latin-1'))
+
+                pdf_output = pdf.output(dest='S')  # Returns bytes directly
+                pdf_base64 = base64.b64encode(pdf_output).decode('utf-8')
 
                 st.download_button(
                     label="📥 Download as PDF",
