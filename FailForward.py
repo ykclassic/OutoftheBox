@@ -1,6 +1,5 @@
 import streamlit as st
 from google.generativeai import GenerativeModel, configure
-from fpdf2 import FPDF
 import base64
 
 # Secure Gemini API key
@@ -79,30 +78,25 @@ Tone: Confident, authentic, inspiring.
                 st.markdown("### Your FailForward Profile")
                 st.markdown(reverse_resume)
 
-                # Fixed PDF Export using fpdf2
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", 'B', 16)
-                pdf.cell(0, 10, "FailForward Profile", ln=1, align='C')
-                pdf.ln(10)
-                pdf.set_font("Arial", '', 12)
+                # Simple HTML "PDF" alternative (downloadable)
+                html_content = f"""
+                <html>
+                <head><title>FailForward Profile</title></head>
+                <body style="font-family: Arial, sans-serif; padding: 40px;">
+                <h1 style="text-align: center; color: #ff4757;">FailForward Profile</h1>
+                <pre style="white-space: pre-wrap; font-family: Arial;">{reverse_resume}</pre>
+                </body>
+                </html>
+                """
 
-                # Write text line by line with proper encoding
-                for line in reverse_resume.split('\n'):
-                    cleaned_line = line.encode('latin-1', 'replace').decode('latin-1')
-                    pdf.multi_cell(0, 10, cleaned_line)
-
-                # Get bytes directly
-                pdf_bytes = pdf.output(dest='S')
-
-                # Encode to base64
-                pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+                html_bytes = html_content.encode('utf-8')
+                html_base64 = base64.b64encode(html_bytes).decode('utf-8')
 
                 st.download_button(
-                    label="📥 Download as PDF",
-                    data=pdf_base64,
-                    file_name="failforward_profile.pdf",
-                    mime="application/pdf"
+                    label="📥 Download as HTML (open in browser & print to PDF)",
+                    data=html_base64,
+                    file_name="failforward_profile.html",
+                    mime="text/html"
                 )
 
                 st.caption("FailForward uses Gemini AI to reframe experience — this is your story, powerfully told.")
