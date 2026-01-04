@@ -7,11 +7,12 @@ import json
 # Secure Gemini API key
 try:
     configure(api_key=st.secrets["GEMINI_API_KEY"])
-except:
+except KeyError:
     st.error("Gemini API key not found. Add GEMINI_API_KEY to Streamlit secrets.")
     st.stop()
 
-model = GenerativeModel('gemini-1.5-flash')  # Fast & capable model (Jan 2026)
+# Use the latest stable flash model as of January 2026
+model = GenerativeModel('gemini-1.5-flash-001')
 
 st.set_page_config(page_title="EchoMind", page_icon="🧠", layout="centered")
 
@@ -45,22 +46,31 @@ if uploaded_files:
         filename = file.name
 
         if file.type == "text/plain":
-            content = file.read().decode("utf-8")
+            content = file.read().decode("utf-8", errors="ignore")
         elif file.type == "application/pdf":
-            reader = PdfReader(file)
-            content = "\n".join([page.extract_text() or "" for page in reader.pages])
+            try:
+                reader = PdfReader(file)
+                content = "\n".join([page.extract_text() or "" for page in reader.pages])
+            except:
+                content = "[Error reading PDF]"
         elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            doc = Document(file)
-            content = "\n".join([para.text for para in doc.paragraphs])
+            try:
+                doc = Document(file)
+                content = "\n".join([para.text for para in doc.paragraphs])
+            except:
+                content = "[Error reading DOCX]"
         elif file.type == "application/json":
-            data = json.load(file)
-            if isinstance(data, list):
-                content = "\n".join([item.get('full_text', item.get('text', '')) for item in data])
-            else:
-                content = json.dumps(data, indent=2)
+            try:
+                data = json.load(file)
+                if isinstance(data, list):
+                    content = "\n".join([item.get('full_text') or item.get('text', '') for item in data])
+                else:
+                    content = json.dumps(data, indent=2)
+            except:
+                content = "[Error reading JSON]"
 
         if content.strip():
-            all_text += f"\n\n--- From {filename} ---\n{content[:15000]}"  # Truncate per file
+            all_text += f"\n\n--- From {filename} ---\n{content[:15000]}"
             file_info.append(filename)
 
     if all_text.strip():
