@@ -6,3 +6,4 @@ openai>=1.0.0
 google-generativeai
 streamlit
 fpdf2  # For PDF generation
+fpdf
