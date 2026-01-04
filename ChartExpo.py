@@ -24,20 +24,25 @@ st.markdown("""
 st.markdown('<p class="big-font">📊 ChartSkeptic</p>', unsafe_allow_html=True)
 st.markdown('<p class="subheader">Expose how charts mislead — intended story, hidden truths, deception tactics.</p>', unsafe_allow_html=True)
 
-st.info("Upload a chart or dashboard screenshot. ChartSkeptic reveals what it's trying to sell you — and what it's hiding.")
+st.info("Upload one or more chart/dashboard screenshots. ChartSkeptic reveals what each is trying to sell you — and what it's hiding.")
 
-uploaded_file = st.file_uploader("Upload chart image (PNG, JPG, PDF)", type=['png', 'jpg', 'jpeg', 'pdf'])
+uploaded_files = st.file_uploader(
+    "Upload chart images (PNG, JPG, PDF)",
+    type=['png', 'jpg', 'jpeg', 'pdf'],
+    accept_multiple_files=True
+)
 
-if uploaded_file:
-    # Display uploaded chart
-    st.image(uploaded_file, caption="Uploaded Chart", use_column_width=True)
+if uploaded_files:
+    for idx, uploaded_file in enumerate(uploaded_files):
+        st.markdown(f"### Chart {idx + 1}: {uploaded_file.name}")
+        st.image(uploaded_file, use_column_width=True)
 
-    with st.spinner("Skeptically analyzing the chart..."):
-        try:
-            # Fixed: Specify mime_type when uploading file-like object
-            uploaded = genai.upload_file(uploaded_file, mime_type=uploaded_file.type)
+        with st.spinner(f"Analyzing Chart {idx + 1}..."):
+            try:
+                # Fixed mime_type for file-like object
+                uploaded = genai.upload_file(uploaded_file, mime_type=uploaded_file.type)
 
-            prompt = """
+                prompt = """
 You are ChartSkeptic — a sharp, unbiased data visualization analyst for investors, journalists, and analysts.
 
 Analyze this chart/dashboard critically:
@@ -50,16 +55,18 @@ Analyze this chart/dashboard critically:
 Be specific, evidence-based, and neutral. Reference visible elements (axes, labels, trends).
 """
 
-            response = model.generate_content([uploaded, prompt])
-            analysis = response.text
+                response = model.generate_content([uploaded, prompt])
+                analysis = response.text
 
-            st.success("Analysis complete")
-            st.markdown("### ChartSkeptic Report")
-            st.markdown(analysis)
+                st.success(f"Analysis complete for Chart {idx + 1}")
+                st.markdown("#### ChartSkeptic Report")
+                st.markdown(analysis)
 
-            st.caption("ChartSkeptic uses Gemini AI vision — always verify with raw data. Not financial advice.")
-        except Exception as e:
-            st.error(f"Analysis failed: {str(e)}")
+                st.markdown("---")  # Separator between charts
+
+                st.caption("ChartSkeptic uses Gemini AI vision — always verify with raw data. Not financial advice.")
+            except Exception as e:
+                st.error(f"Analysis failed for {uploaded_file.name}: {str(e)}")
 
 st.markdown("---")
 st.caption("ChartSkeptic • See through the visualization • Powered by Gemini AI")
