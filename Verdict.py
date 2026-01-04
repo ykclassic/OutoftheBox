@@ -1,5 +1,8 @@
 import streamlit as st
 from google.generativeai import GenerativeModel, configure
+from PyPDF2 import PdfReader
+from docx import Document
+import json
 
 # Secure Gemini API key
 try:
@@ -8,85 +11,99 @@ except KeyError:
     st.error("Gemini API key not found. Add GEMINI_API_KEY to Streamlit secrets.")
     st.stop()
 
-# Use current stable model
-model = GenerativeModel('gemini-1.5-flash')
+# Current valid Gemini flash model as of January 2026
+model = GenerativeModel('gemini-2.5-flash')
 
-st.set_page_config(page_title="Verdict", page_icon="⚖️", layout="centered")
+st.set_page_config(page_title="EchoMind", page_icon="🧠", layout="centered")
 
 st.markdown("""
 <style>
-    .big-font { font-size:50px !important; font-weight:bold; text-align:center; color:#ff6b6b; }
+    .big-font { font-size:50px !important; font-weight:bold; text-align:center; color:#00ffaa; }
     .subheader { font-size:24px; color:#cccccc; text-align:center; margin-bottom:40px; }
-    .question { font-size:18px; font-weight:bold; margin-top:30px; }
+    .upload-box { border: 2px dashed #00ffaa; padding: 20px; border-radius: 10px; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="big-font">⚖️ Verdict</p>', unsafe_allow_html=True)
-st.markdown('<p class="subheader">Evaluate the quality of your past decisions — not the outcome.</p>', unsafe_allow_html=True)
+st.markdown('<p class="big-font">🧠 EchoMind</p>', unsafe_allow_html=True)
+st.markdown('<p class="subheader">Understand why your past self thought, felt, and wrote the way you did.</p>', unsafe_allow_html=True)
 
-st.info("Verdict analyzes what you knew at the time, identifies biases and missing information, and judges if the decision was reasonable — even if things went wrong.")
+st.markdown("### Upload your old content")
+st.markdown("<div class='upload-box'>Supported: Text files, PDFs, Word docs, Twitter JSON exports</div>", unsafe_allow_html=True)
 
-with st.form("decision_form"):
-    st.markdown("<p class='question'>1. What was the decision?</p>", unsafe_allow_html=True)
-    decision = st.text_area("Describe the decision clearly (e.g., 'I invested in crypto in 2021', 'I took that job offer')", height=100)
+uploaded_files = st.file_uploader(
+    "Drop files here or click to browse",
+    accept_multiple_files=True,
+    type=['txt', 'pdf', 'docx', 'json'],
+    label_visibility="collapsed"
+)
 
-    st.markdown("<p class='question'>2. When did you make it?</p>", unsafe_allow_html=True)
-    when = st.text_input("Approximate date or year (e.g., 'March 2021', '2018')")
+if uploaded_files:
+    all_text = ""
+    file_info = []
 
-    st.markdown("<p class='question'>3. What was the actual outcome?</p>", unsafe_allow_html=True)
-    outcome = st.text_area("Briefly describe what happened (good or bad)", height=100)
+    for file in uploaded_files:
+        content = ""
+        filename = file.name
 
-    st.markdown("<p class='question'>4. What did you know or believe at the time?</p>", unsafe_allow_html=True)
-    knowledge = st.text_area("List key facts, beliefs, advice you had (or type 'I don’t remember much')", height=150)
-
-    st.markdown("<p class='question'>5. What were your main goals or fears?</p>", unsafe_allow_html=True)
-    goals = st.text_area("What were you hoping to achieve or avoid?", height=100)
-
-    submitted = st.form_submit_button("Get Verdict")
-
-if submitted:
-    if not decision.strip():
-        st.warning("Please describe the decision.")
-    else:
-        with st.spinner("Reconstructing your decision process..."):
+        if file.type == "text/plain":
+            content = file.read().decode("utf-8", errors="ignore")
+        elif file.type == "application/pdf":
             try:
-                prompt = f"""
-You are Verdict — a fair, empathetic decision analyst.
+                reader = PdfReader(file)
+                content = "\n".join([page.extract_text() or "" for page in reader.pages])
+            except:
+                content = "[Error reading PDF]"
+        elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            try:
+                doc = Document(file)
+                content = "\n".join([para.text for para in doc.paragraphs])
+            except:
+                content = "[Error reading DOCX]"
+        elif file.type == "application/json":
+            try:
+                data = json.load(file)
+                if isinstance(data, list):
+                    content = "\n".join([item.get('full_text') or item.get('text', '') for item in data])
+                else:
+                    content = json.dumps(data, indent=2)
+            except:
+                content = "[Error reading JSON]"
 
-User's past decision:
-- Decision: {decision}
-- Made in: {when}
-- Outcome: {outcome}
-- Known at the time: {knowledge}
-- Goals/fears: {goals}
+        if content.strip():
+            all_text += f"\n\n--- From {filename} ---\n{content[:15000]}"
+            file_info.append(filename)
 
-Analyze this decision as if you are reviewing it WITHOUT hindsight.
-Your job is to evaluate the QUALITY of the decision based ONLY on what was reasonably knowable at the time.
+    if all_text.strip():
+        with st.spinner("EchoMind is reflecting on your past self..."):
+            try:
+                response = model.generate_content(f"""
+You are EchoMind — an empathetic, insightful analyst who helps people understand their past mindset.
 
-Step by step:
-1. List the key assumptions the user likely made.
-2. Identify information that was missing (but note if it was reasonably unknowable then).
-3. Detect possible cognitive biases (e.g., overconfidence, anchoring, confirmation bias).
-4. Consider personal and cultural context of that time.
+Analyze this content I created in the past (from files: {', '.join(file_info)}):
 
-Then give a clear verdict:
-- Was this a reasonable decision given what was known?
-- What made it strong or weak?
-- One key lesson for future decisions.
+{all_text[:20000]}
 
-Be kind, non-judgmental, and insightful. Use "you" to speak directly to the user.
-"""
+Explain WHY I likely thought, felt, or wrote this way, considering:
+- Probable age and life stage
+- Language patterns, emotional tone, maturity level
+- Cultural, social, or technological context of the time
+- Common psychological development
 
-                response = model.generate_content(prompt)
-                verdict = response.text
+Be kind, non-judgmental, and deeply understanding. Use "you" to speak directly.
+Clearly label inferences (e.g., "It seems you were...").
+Structure: Insightful paragraphs + bullet points for key factors.
+""")
+                insight = response.text
 
-                st.success("Verdict complete")
-                st.markdown("### Your Decision Autopsy")
-                st.markdown(verdict)
+                st.success("Analysis complete")
+                st.markdown("### Why Your Past Self Thought This Way")
+                st.markdown(insight)
 
-                st.caption("Verdict uses AI to reconstruct mindset — this is an informed reflection, not absolute truth.")
+                st.caption("EchoMind uses Gemini AI for interpretation — this is an educated reflection, not absolute truth.")
             except Exception as e:
                 st.error(f"Analysis failed: {str(e)}")
+    else:
+        st.warning("No readable text found in uploaded files.")
 
 st.markdown("---")
-st.caption("Verdict • Judge the decision, not the outcome • Powered by Gemini AI")
+st.caption("EchoMind • Understand your past to know yourself better • Powered by Gemini AI")
