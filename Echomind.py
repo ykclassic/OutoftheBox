@@ -11,8 +11,8 @@ except KeyError:
     st.error("Gemini API key not found. Add GEMINI_API_KEY to Streamlit secrets.")
     st.stop()
 
-# Use the latest stable flash model as of January 2026
-model = GenerativeModel('gemini-1.5-flash-001')
+# Updated to a valid model name as of January 2026 (Gemini 2.5 Flash)
+model = GenerativeModel('gemini-2.5-flash')
 
 st.set_page_config(page_title="EchoMind", page_icon="🧠", layout="centered")
 
