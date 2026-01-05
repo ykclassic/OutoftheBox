@@ -1,4 +1,13 @@
 import streamlit as st
+
+# 1. Hide the standard menu and footer using CSS
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 from google.generativeai import GenerativeModel, configure
 import pandas as pd
 import plotly.express as px
@@ -37,26 +46,29 @@ game = st.selectbox("Choose a Game", [
 if 'scores' not in st.session_state:
     st.session_state.scores = []
 
-# Game 1: Riddle Challenge
+# Game 1: Riddle Challenge (Updated with reason for correct answer)
 if game == "Riddle Challenge":
     st.header("🧠 Riddle Challenge")
     st.info("AI generates a riddle. Solve it for points!")
 
     if st.button("Generate New Riddle"):
         with st.spinner("Crafting a clever riddle..."):
-            prompt = "Generate a fun, intellectual riddle with a clear answer. Format: Riddle: [riddle] Answer: [answer] (hidden)"
+            prompt = "Generate a fun, intellectual riddle with a clear answer and brief reason why it's correct. Format: Riddle: [riddle] Answer: [answer] Reason: [explanation]"
             response = model.generate_content(prompt)
             riddle_text = response.text
             
-            # Extract riddle and answer
-            if "Riddle:" in riddle_text and "Answer:" in riddle_text:
+            # Extract riddle, answer, and reason
+            if "Riddle:" in riddle_text and "Answer:" in riddle_text and "Reason:" in riddle_text:
                 riddle = riddle_text.split("Answer:")[0].replace("Riddle:", "").strip()
-                answer = riddle_text.split("Answer:")[1].strip()
+                remaining = riddle_text.split("Answer:")[1]
+                answer = remaining.split("Reason:")[0].strip()
+                reason = remaining.split("Reason:")[1].strip()
                 
                 st.session_state.current_riddle = riddle
                 st.session_state.current_answer = answer.lower()
+                st.session_state.current_reason = reason
             
-        st.markdown(f"### Riddle:\n{st.session_state.current_riddle}")
+        st.markdown(f"### {st.session_state.current_riddle}")
         
         user_answer = st.text_input("Your answer")
         if st.button("Submit Answer"):
@@ -64,7 +76,8 @@ if game == "Riddle Challenge":
                 st.success("Correct! 🎉 +10 points")
                 st.session_state.scores.append(10)
             else:
-                st.error(f"Wrong! The answer was: {st.session_state.current_answer}")
+                st.error(f"Wrong! The correct answer is: {st.session_state.current_answer}")
+                st.markdown(f"### Why it's correct:\n{st.session_state.current_reason}")
                 st.session_state.scores.append(0)
 
 # Game 2: Custom Quiz Master
