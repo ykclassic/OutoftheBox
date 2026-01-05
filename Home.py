@@ -7,6 +7,23 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- HIDE ONLY THE NECESSARY PARTS ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;} /* Hides the hamburger menu */
+            footer {visibility: hidden;}    /* Hides the 'Made with Streamlit' footer */
+            header {visibility: hidden;}    /* Hides the top header bar */
+            
+            /* THIS BRINGS THE SIDEBAR BUTTON BACK */
+            .st-emotion-cache-12fmjuu, .st-emotion-cache-15ec609 {
+                visibility: visible;
+                position: fixed;
+                top: 0;
+            }
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 # --- MAIN CONTENT ---
 st.title("Welcome to My Tool Suite. This is a collection of various tool for different purposes")
 st.write("---")
