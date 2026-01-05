@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 # --- MAIN CONTENT ---
-st.title("Welcome to My Tool Suite")
+st.title("Welcome to My Tool Suite. This is a collection of various tool for different purposes")
 st.write("---")
 
 st.markdown("""
