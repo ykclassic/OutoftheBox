@@ -1,4 +1,14 @@
 import streamlit as st
+import streamlit as st
+
+# 1. Hide the standard menu and footer using CSS
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 from google.generativeai import GenerativeModel, configure
 import google.generativeai as genai
 from PyPDF2 import PdfReader
