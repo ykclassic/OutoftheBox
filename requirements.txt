@@ -11,3 +11,5 @@ python-docx
 streamlit
 replicate
 Pillow  # For mockups
+plotly
+pandas
