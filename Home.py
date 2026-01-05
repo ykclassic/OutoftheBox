@@ -1,28 +1,16 @@
 import streamlit as st
 
-# MUST be the first streamlit command
-st.set_page_config(
-    page_title="My App Hub",
-    page_icon="🚀",
-    layout="wide"
-)
+# MUST be the first command
+st.set_page_config(page_title="My App Hub", layout="wide")
 
-# --- HIDE ONLY THE NECESSARY PARTS ---
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;} /* Hides the hamburger menu */
-            footer {visibility: hidden;}    /* Hides the 'Made with Streamlit' footer */
-            header {visibility: hidden;}    /* Hides the top header bar */
-            
-            /* THIS BRINGS THE SIDEBAR BUTTON BACK */
-            .st-emotion-cache-12fmjuu, .st-emotion-cache-15ec609 {
-                visibility: visible;
-                position: fixed;
-                top: 0;
-            }
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# Native-friendly way to hide just the footer
+st.markdown("""
+    <style>
+    footer {visibility: hidden;}
+    /* This keeps the sidebar toggle visible even if you hide other header elements */
+    .stAppHeader {background-color: rgba(0,0,0,0);} 
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- MAIN CONTENT ---
 st.title("Welcome to My Tool Suite. This is a collection of various tool for different purposes")
