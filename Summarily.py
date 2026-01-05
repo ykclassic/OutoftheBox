@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit as st
 
 # 1. Hide the standard menu and footer using CSS
 hide_streamlit_style = """
@@ -27,8 +26,11 @@ model = GenerativeModel('gemini-2.5-flash')
 
 st.set_page_config(page_title="Summarily", page_icon="📚", layout="wide")
 
+# Fixed: Add unsafe_allow_html=True to ALL style/markdown with HTML/CSS
 st.markdown("""
 <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     .big-font { font-size:50px !important; font-weight:bold; text-align:center; color:#3498db; }
     .subheader { font-size:24px; color:#cccccc; text-align:center; margin-bottom:40px; }
 </style>
@@ -48,7 +50,6 @@ if mode == "Upload Book File":
 
         with st.spinner("Extracting and summarizing..."):
             try:
-                # Upload for vision (handles images/PDFs)
                 gemini_file = genai.upload_file(uploaded_file, mime_type=uploaded_file.type)
 
                 prompt = """
@@ -78,14 +79,14 @@ Be accurate and insightful.
 elif mode == "Search by Details":
     st.header("Search for Book Summary")
     title = st.text_input("Book Title (required)")
-    author = st.text_input("Author Name (required)")
+    author = st.text_input("Author Name (optional)")
     publisher = st.text_input("Publisher (optional)")
     pub_date = st.text_input("Publication Year (optional)")
     sample_lines = st.text_area("Few lines from any chapter (optional — helps accuracy)", height=100)
 
     if st.button("Generate Summary"):
-        if not title or not author:
-            st.warning("Title and author required.")
+        if not title.strip():
+            st.warning("Title is required.")
         else:
             with st.spinner("Searching and summarizing..."):
                 try:
@@ -94,7 +95,7 @@ You are Summarily — an expert book summarizer with knowledge of published book
 
 Book details:
 Title: {title}
-Author: {author}
+Author: {author or "Not provided"}
 Publisher: {publisher or "Not provided"}
 Publication year: {pub_date or "Not provided"}
 Sample lines: {sample_lines or "None"}
@@ -105,7 +106,7 @@ Provide:
 - Overall book message
 
 If multiple editions exist, summarize the most common one.
-If unsure, note limitations.
+If unsure or author missing, note limitations and do your best.
 
 Structure clearly with headings.
 """
