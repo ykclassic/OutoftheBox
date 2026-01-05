@@ -1,40 +1,55 @@
 import streamlit as st
 
-# MUST be the first command
-st.set_page_config(page_title="My App Hub", layout="wide")
+# 1. Page Configuration
+st.set_page_config(page_title="TechSolute Hub", page_icon="🚀", layout="wide")
 
-# Native-friendly way to hide just the footer
+# 2. Native-friendly CSS to hide footer and keep it clean
 st.markdown("""
     <style>
     footer {visibility: hidden;}
-    /* This keeps the sidebar toggle visible even if you hide other header elements */
-    .stAppHeader {background-color: rgba(0,0,0,0);} 
+    .stAppDeployButton {display:none;} /* Hides the extra deploy button */
     </style>
     """, unsafe_allow_html=True)
 
-# --- MAIN CONTENT ---
-st.title("Welcome to My Tool Suite. This is a collection of various tool for different purposes")
-st.write("---")
+# 3. App Database (Easily add all 20 apps here)
+# Format: ["Icon", "Name", "Description"]
+apps = [
+    ["📈", "ForgV1", "Data Analytics and Visualization."],
+    ["🤖", "Forgev2", "AI Content Generator."],
+    ["🧠", "Forgev3", "Neural Network Model Tester."],
+    ["⚙️", "Forgev4", "System Utility and Automation."],
+    ["📊", "Forgev5", "Market Trend Tracker."],
+    ["🔍", "Forgev6", "SEO Keyword Researcher."],
+    # ... Just add more rows here until you hit 20
+]
 
-st.markdown("""
-### 🛠 Available Applications
-Choose a tool from the sidebar to begin. Here is a quick overview of what you'll find:
-""")
+# 4. Header Section
+st.title("🚀 TechSolute Application Hub")
+st.write("Welcome to the central dashboard. Search or browse the apps below.")
 
-# Creating a 3-column layout for a dashboard feel
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.info("#### 📈 App One")
-    st.write("Description of your first app. Great for data analysis or specific tasks.")
-
-with col2:
-    st.success("#### 🤖 App Two")
-    st.write("Description of your second app. Powered by OpenAI/LLMs.")
-
-with col3:
-    st.warning("#### ⚙️ App Three")
-    st.write("Description of your third app. Utility tools and settings.")
+# 5. Search Bar
+search_query = st.text_input("🔍 Search for an app...", "").lower()
 
 st.write("---")
-st.caption("Developed by [Your Name] | All apps share a secure API environment.")
+
+# 6. Filter and Display Apps in a Grid
+# We filter the list based on the search input
+filtered_apps = [app for app in apps if search_query in app[1].lower() or search_query in app[2].lower()]
+
+if not filtered_apps:
+    st.warning("No apps found matching that search.")
+else:
+    # This creates a responsive grid (3 columns)
+    cols = st.columns(3)
+    for index, app in enumerate(filtered_apps):
+        icon, name, desc = app
+        # This uses the modulo operator to cycle through columns 0, 1, 2
+        with cols[index % 3]:
+            with st.container(border=True): # Adds a nice box around each app
+                st.markdown(f"### {icon} {name}")
+                st.write(desc)
+                # This hint reminds them to use the sidebar
+                st.caption(f"Open '{icon} {name}' in the sidebar ←")
+
+st.write("---")
+st.caption("Developed by TechSolute | All rights reserved.")
