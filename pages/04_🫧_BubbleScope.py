@@ -1,85 +1,212 @@
 import streamlit as st
-from google.generativeai import GenerativeModel, configure
-import plotly.express as px
 import pandas as pd
+import plotly.express as px
+from google.generativeai import GenerativeModel, configure
+from typing import Optional
 
-# Secure Gemini API key
-try:
-    configure(api_key=st.secrets["GEMINI_API_KEY"])
-except KeyError:
-    st.error("Gemini API key not found. Add GEMINI_API_KEY to Streamlit secrets.")
+
+# --------------------------------------------------
+# PAGE CONFIG (MUST BE FIRST STREAMLIT CALL)
+# --------------------------------------------------
+st.set_page_config(
+    page_title="BubbleScope",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# --------------------------------------------------
+# SECURE GEMINI CONFIGURATION
+# --------------------------------------------------
+def configure_gemini() -> Optional[GenerativeModel]:
+    """
+    Safely configure Gemini model.
+    Returns model if successful, otherwise None.
+    """
+    try:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    except KeyError:
+        st.error(
+            "Gemini API key not found.\n\n"
+            "Add GEMINI_API_KEY to Streamlit secrets."
+        )
+        return None
+
+    try:
+        configure(api_key=api_key)
+        return GenerativeModel("gemini-2.5-flash")
+    except Exception as exc:
+        st.error(f"Failed to initialize Gemini model: {exc}")
+        return None
+
+
+model = configure_gemini()
+if model is None:
     st.stop()
 
-model = GenerativeModel('gemini-2.5-flash')
 
-st.set_page_config(page_title="BubbleScope", page_icon="🔍", layout="wide")
+# --------------------------------------------------
+# UI STYLING (SAFE INLINE CSS)
+# --------------------------------------------------
+st.markdown(
+    """
+    <style>
+        .title {
+            font-size: 48px;
+            font-weight: 800;
+            text-align: center;
+            color: #3498db;
+        }
+        .subtitle {
+            font-size: 22px;
+            text-align: center;
+            color: #cccccc;
+            margin-bottom: 32px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-st.markdown("""
-<style>
-    .big-font { font-size:50px !important; font-weight:bold; text-align:center; color:#3498db; }
-    .subheader { font-size:24px; color:#cccccc; text-align:center; margin-bottom:40px; }
-</style>
-""", unsafe_allow_html=True)
 
-st.markdown('<p class="big-font">🔍 BubbleScope</p>', unsafe_allow_html=True)
-st.markdown('<p class="subheader">See the shape of your filter bubble — and what's hidden beyond it.</p>', unsafe_allow_html=True)
+# --------------------------------------------------
+# HEADER
+# --------------------------------------------------
+st.markdown('<div class="title">BubbleScope</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="subtitle">'
+    "See the shape of your filter bubble and what is hidden beyond it."
+    "</div>",
+    unsafe_allow_html=True,
+)
 
-st.info("Describe your main news sources and topics. BubbleScope shows opposing views, hidden stories, and the contours of your information bubble.")
+st.info(
+    "Describe your main news sources and topics. "
+    "BubbleScope analyzes potential blind spots, hidden viewpoints, "
+    "and ways to broaden your information exposure."
+)
 
+
+# --------------------------------------------------
+# USER INPUTS
+# --------------------------------------------------
 sources = st.text_area(
-    "Your main sources & platforms",
+    label="Your main sources and platforms",
     height=100,
-    placeholder="e.g., Twitter (follow tech influencers), Reddit (r/technology, r/politics), NYT, Fox News"
+    placeholder="Example: Twitter (tech influencers), Reddit (r/technology), NYT",
 )
 
 topics = st.text_area(
-    "Topics you follow most",
+    label="Topics you follow most",
     height=100,
-    placeholder="e.g., AI, climate change, US politics, crypto"
+    placeholder="Example: AI, climate change, US politics, crypto",
 )
 
-lean = st.selectbox("Perceived political/cultural lean (optional)", ["Left", "Center-Left", "Center", "Center-Right", "Right", "None/Other"])
+lean = st.selectbox(
+    label="Perceived political or cultural lean (optional)",
+    options=[
+        "None / Not specified",
+        "Left",
+        "Center-Left",
+        "Center",
+        "Center-Right",
+        "Right",
+    ],
+)
 
+
+# --------------------------------------------------
+# PROMPT BUILDER (AST-SAFE)
+# --------------------------------------------------
+def build_prompt(
+    user_sources: str,
+    user_topics: str,
+    user_lean: str,
+) -> str:
+    """
+    Build Gemini prompt using explicit string concatenation.
+    This avoids AST and parsing issues on Streamlit Cloud.
+    """
+    lean_value = (
+        user_lean if user_lean != "None / Not specified" else "Not specified"
+    )
+
+    return (
+        "You are BubbleScope, an unbiased analyst of information ecosystems.\n\n"
+        "User information:\n"
+        f"- Sources and platforms: {user_sources}\n"
+        f"- Main topics followed: {user_topics}\n"
+        f"- Self-described lean: {lean_value}\n\n"
+        "Analyze the user's information bubble:\n"
+        "1. Which perspectives, stories, or viewpoints are likely hidden or downranked.\n"
+        "2. The overall shape of their bubble (ideological skew, topic silos, diversity).\n"
+        "3. Five specific examples of content or viewpoints they likely never see.\n"
+        "4. Three concrete suggestions (sources or searches) to broaden exposure.\n\n"
+        "Be neutral, specific, and constructive. Avoid judgment."
+    )
+
+
+# --------------------------------------------------
+# MAIN ACTION
+# --------------------------------------------------
 if st.button("Scope My Bubble", type="primary"):
     if not sources.strip() and not topics.strip():
-        st.warning("Share at least sources or topics.")
+        st.warning("Please provide at least sources or topics.")
     else:
         with st.spinner("Mapping your filter bubble..."):
             try:
-                prompt = f"""
-You are BubbleScope — an unbiased analyst of information ecosystems.
-
-User's sources: {sources}
-Main topics: {topics}
-Self-described lean: {lean or "Not specified"}
-
-Analyze their filter bubble:
-1. What views, stories, or perspectives are likely hidden or downranked by their algorithms?
-2. Shape of their bubble (e.g., topic silos, ideological lean, diversity level).
-3. 5 specific examples of content/types they probably never see (articles, opinions, people).
-4. How to escape: 3 balanced sources or searches to broaden exposure.
-
-Be neutral, specific, and constructive. No judgment.
-"""
+                prompt = build_prompt(sources, topics, lean)
 
                 response = model.generate_content(prompt)
-                analysis = response.text
 
-                st.success("Bubble mapped")
-                st.markdown("### Your Filter Bubble Analysis")
-                st.markdown(analysis)
+                analysis_text = getattr(response, "text", "").strip()
 
-                # Simple visualization (mock bias spectrum)
-                data = pd.DataFrame({
-                    "Perspective": ["Far Left", "Left", "Center", "Right", "Far Right"],
-                    "Exposure": [20, 60, 10, 8, 2]  # Mock — in real app, AI could estimate
-                })
-                fig = px.bar(data, x="Perspective", y="Exposure", title="Estimated Exposure Spectrum")
-                st.plotly_chart(fig, use_container_width=True)
+                if not analysis_text:
+                    st.error("No analysis returned from Gemini.")
+                else:
+                    st.success("Bubble mapped successfully")
+                    st.markdown("### Your Filter Bubble Analysis")
+                    st.markdown(analysis_text)
 
-                st.caption("BubbleScope uses Gemini AI — this is an educated estimate based on your inputs.")
-            except Exception as e:
-                st.error(f"Analysis failed: {str(e)}")
+                    # --------------------------------------------------
+                    # SIMPLE VISUALIZATION (ILLUSTRATIVE ONLY)
+                    # --------------------------------------------------
+                    spectrum_data = pd.DataFrame(
+                        {
+                            "Perspective": [
+                                "Far Left",
+                                "Left",
+                                "Center",
+                                "Right",
+                                "Far Right",
+                            ],
+                            "Estimated Exposure (%)": [20, 55, 15, 8, 2],
+                        }
+                    )
 
+                    fig = px.bar(
+                        spectrum_data,
+                        x="Perspective",
+                        y="Estimated Exposure (%)",
+                        title="Estimated Exposure Spectrum (Illustrative)",
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    st.caption(
+                        "This visualization is an illustrative estimate based on your inputs, "
+                        "not a measured political profile."
+                    )
+
+            except Exception as exc:
+                st.error(f"Analysis failed: {exc}")
+
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
 st.markdown("---")
-st.caption("BubbleScope • See beyond your bubble • Powered by Gemini AI")
+st.caption(
+    "BubbleScope • See beyond your bubble • Powered by Gemini AI"
+)
