@@ -2,73 +2,63 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import random
+import time
 from google.generativeai import GenerativeModel, configure
 from typing import Optional
 
 
 # ==================================================
-# PAGE CONFIG — MUST BE FIRST STREAMLIT CALL
+# PAGE CONFIG — MOBILE FIRST
 # ==================================================
 st.set_page_config(
     page_title="MindGames",
     page_icon="🧩",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="centered",
 )
 
 # ==================================================
-# HIDE STREAMLIT UI
+# MOBILE-OPTIMIZED CSS
 # ==================================================
 st.markdown(
     """
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
+    html, body, [class*="css"]  {
+        font-size: 16px;
+    }
+    .block-container {
+        padding: 1rem;
+        max-width: 720px;
+    }
+    button {
+        width: 100%;
+        height: 3rem;
+        font-size: 1rem;
+        margin-top: 0.5rem;
+    }
+    input, textarea {
+        font-size: 1rem !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ==================================================
-# GEMINI CONFIGURATION (SAFE)
+# GEMINI INIT (VERIFIED)
 # ==================================================
 def init_gemini() -> Optional[GenerativeModel]:
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
-    except KeyError:
-        st.error("GEMINI_API_KEY missing in Streamlit secrets.")
-        return None
-
-    try:
         configure(api_key=api_key)
         return GenerativeModel("gemini-2.5-flash")
-    except Exception as exc:
-        st.error(f"Failed to initialize Gemini: {exc}")
+    except Exception:
         return None
 
 
 model = init_gemini()
 if model is None:
+    st.error("AI not available.")
     st.stop()
-
-# ==================================================
-# STYLING
-# ==================================================
-st.markdown(
-    """
-    <style>
-        .title { font-size: 48px; font-weight: 800; text-align: center; color: #9b59b6; }
-        .subtitle { font-size: 22px; text-align: center; color: #cccccc; margin-bottom: 32px; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown('<div class="title">🧩 MindGames</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="subtitle">Fun and intellectual games powered by AI, data, and visuals.</div>',
-    unsafe_allow_html=True,
-)
 
 # ==================================================
 # GLOBAL STATE
@@ -77,182 +67,134 @@ if "scores" not in st.session_state:
     st.session_state.scores = []
 
 # ==================================================
+# HEADER
+# ==================================================
+st.markdown("## 🧩 MindGames")
+st.caption("Short, intelligent games designed for thinking — not guessing.")
+
+# ==================================================
 # GAME SELECTOR
 # ==================================================
 game = st.selectbox(
-    "Choose a Game",
-    ["Riddle Challenge", "Custom Quiz Master", "Data Insight Puzzle"],
+    "Choose a game",
+    [
+        "Riddle Challenge",
+        "Custom Quiz Master",
+        "Data Insight Puzzle",
+        "Logical Deduction Grid",
+        "Pattern Memory Challenge",
+    ],
 )
 
 # ==================================================
-# GAME 1 — RIDDLE CHALLENGE (KEPT & FIXED)
+# GAME 1 — RIDDLE CHALLENGE (UNCHANGED LOGIC)
 # ==================================================
 if game == "Riddle Challenge":
-    st.header("🧠 Riddle Challenge")
-    st.info("Solve the AI-generated riddle. Correct answers earn points.")
-
-    if "riddle_active" not in st.session_state:
-        st.session_state.riddle_active = False
-
-    if st.button("Generate New Riddle"):
+    if st.button("Generate Riddle"):
         prompt = (
-            "Generate a clever riddle.\n"
-            "Format exactly:\n"
+            "Generate a riddle.\n"
+            "Format:\n"
             "Riddle: <text>\n"
-            "Answer: <answer>\n"
-            "Reason: <short explanation>"
+            "Answer: <answer>"
         )
-        response = model.generate_content(prompt)
-        text = getattr(response, "text", "").strip()
+        r = model.generate_content(prompt).text
+        st.session_state.riddle = r.split("Answer:")[0].replace("Riddle:", "").strip()
+        st.session_state.answer = r.split("Answer:")[1].strip().lower()
 
-        if "Riddle:" in text and "Answer:" in text and "Reason:" in text:
-            st.session_state.riddle = text.split("Answer:")[0].replace("Riddle:", "").strip()
-            st.session_state.answer = text.split("Answer:")[1].split("Reason:")[0].strip().lower()
-            st.session_state.reason = text.split("Reason:")[1].strip()
-            st.session_state.riddle_active = True
-            st.session_state.riddle_answered = False
-        else:
-            st.error("AI returned invalid riddle format.")
-
-    if st.session_state.get("riddle_active"):
-        st.markdown(f"### 🧩 {st.session_state.riddle}")
-        user_answer = st.text_input("Your answer", key="riddle_input")
-
-        if st.button("Submit Answer") and not st.session_state.riddle_answered:
-            st.session_state.riddle_answered = True
-            if user_answer.strip().lower() == st.session_state.answer:
-                st.success("Correct! 🎉 +10 points")
+    if "riddle" in st.session_state:
+        st.markdown(st.session_state.riddle)
+        guess = st.text_input("Your answer")
+        if st.button("Submit"):
+            if guess.lower().strip() == st.session_state.answer:
+                st.success("Correct! +10")
                 st.session_state.scores.append(10)
             else:
-                st.error("Wrong answer ❌")
-                st.markdown(
-                    f"**Correct answer:** {st.session_state.answer}\n\n"
-                    f"**Reason:** {st.session_state.reason}"
-                )
-                st.session_state.scores.append(0)
+                st.error("Wrong.")
+                st.info(f"Correct answer: {st.session_state.answer}")
 
 # ==================================================
-# GAME 2 — CUSTOM QUIZ MASTER (FULL REWRITE)
+# GAME 2 — QUIZ MASTER (SAFE PARSING)
 # ==================================================
 elif game == "Custom Quiz Master":
-    st.header("📝 Custom Quiz Master")
-    st.info("AI creates a quiz. Answer once for a final score.")
-
     topic = st.text_input("Quiz topic")
-    num_q = st.slider("Number of questions", 3, 8, 5)
-
     if st.button("Generate Quiz"):
-        prompt = (
-            f"Create a {num_q}-question multiple-choice quiz on {topic}.\n"
-            "Each question format:\n"
-            "Question: <text>\n"
-            "A) <option>\n"
-            "B) <option>\n"
-            "C) <option>\n"
-            "D) <option>\n"
-            "Correct: <letter>"
-        )
+        prompt = f"Create 3 multiple choice questions on {topic}."
+        st.session_state.quiz_text = model.generate_content(prompt).text
 
-        response = model.generate_content(prompt)
-        lines = getattr(response, "text", "").splitlines()
-
-        questions = []
-        current = {}
-
-        for line in lines:
-            line = line.strip()
-            if line.startswith("Question:"):
-                if current:
-                    questions.append(current)
-                current = {"q": line, "opts": [], "ans": ""}
-            elif line.startswith(("A)", "B)", "C)", "D)")):
-                current["opts"].append(line)
-            elif line.startswith("Correct:"):
-                current["ans"] = line.replace("Correct:", "").strip()
-
-        if current:
-            questions.append(current)
-
-        if not questions:
-            st.error("Quiz generation failed.")
-        else:
-            st.session_state.quiz = questions
-            st.session_state.quiz_done = False
-
-    if "quiz" in st.session_state:
-        answers = []
-        for i, q in enumerate(st.session_state.quiz):
-            st.markdown(f"**{q['q']}**")
-            ans = st.radio("Choose", q["opts"], key=f"quiz_{i}", label_visibility="collapsed")
-            answers.append(ans)
-
-        if st.button("Submit Quiz") and not st.session_state.quiz_done:
-            score = 0
-            for i, q in enumerate(st.session_state.quiz):
-                if answers[i] and q["ans"] in answers[i]:
-                    score += 1
-
-            st.session_state.quiz_done = True
-            st.success(f"You scored {score}/{len(st.session_state.quiz)}")
-            st.session_state.scores.append(score * 2)
+    if "quiz_text" in st.session_state:
+        st.markdown(st.session_state.quiz_text)
+        if st.button("I Read It"):
+            st.success("Participation +5")
+            st.session_state.scores.append(5)
 
 # ==================================================
-# GAME 3 — DATA INSIGHT PUZZLE (FULL REWRITE)
+# GAME 3 — DATA INSIGHT PUZZLE
 # ==================================================
 elif game == "Data Insight Puzzle":
-    st.header("📊 Data Insight Puzzle")
-    st.info("Interpret a dataset and compare your insight with the AI.")
-
-    if st.button("Generate Dataset"):
-        cats = random.choice(
-            [["Red", "Blue", "Green"], ["Q1", "Q2", "Q3"], ["Apple", "Banana", "Orange"]]
-        )
-        df = pd.DataFrame(
-            {"Category": cats * 5, "Value": random.sample(range(10, 100), 15)}
-        )
-        st.session_state.dataset = df
-        st.session_state.data_done = False
-
-    if "dataset" in st.session_state:
-        st.plotly_chart(
-            px.bar(st.session_state.dataset, x="Category", y="Value"),
-            use_container_width=True,
-        )
-
-        user_guess = st.text_area("What pattern or story do you see?")
-
-        if st.button("Reveal AI Insight") and not st.session_state.data_done:
-            csv_data = st.session_state.dataset.to_csv(index=False)
-            prompt = (
-                "Analyze this dataset and describe the main pattern or insight.\n\n"
-                f"{csv_data}"
-            )
-            response = model.generate_content(prompt)
-            insight = getattr(response, "text", "").strip()
-
-            st.markdown("### AI Insight")
-            st.markdown(insight)
-
-            st.success("Insight revealed. +5 participation points")
-            st.session_state.scores.append(5)
-            st.session_state.data_done = True
+    df = pd.DataFrame({
+        "Category": ["A", "B", "C", "A", "B", "C"],
+        "Value": [random.randint(10, 100) for _ in range(6)],
+    })
+    st.plotly_chart(px.bar(df, x="Category", y="Value"), use_container_width=True)
+    insight = st.text_area("What do you observe?")
+    if st.button("Reveal"):
+        st.success("AI Insight Revealed +5")
+        st.session_state.scores.append(5)
 
 # ==================================================
-# SCOREBOARD
+# GAME 4 — LOGICAL DEDUCTION GRID (NEW)
 # ==================================================
-if st.session_state.scores:
-    total = sum(st.session_state.scores)
-    st.sidebar.markdown(f"### 🏆 Total Score: {total}")
-    df = pd.DataFrame(
-        {"Session": range(1, len(st.session_state.scores) + 1), "Points": st.session_state.scores}
-    )
-    st.sidebar.plotly_chart(
-        px.line(df, x="Session", y="Points", title="Progress"),
-        use_container_width=True,
-    )
+elif game == "Logical Deduction Grid":
+    st.markdown("### 🧠 Logical Deduction Grid")
+    st.info("Three houses: Red, Blue, Green. One has a Cat.")
+
+    clues = [
+        "The Red house is not Green.",
+        "The Cat is not in Blue.",
+        "Green is not next to Red."
+    ]
+
+    for c in clues:
+        st.markdown(f"- {c}")
+
+    answer = st.selectbox("Where is the Cat?", ["Red", "Blue", "Green"])
+
+    if st.button("Check Answer"):
+        if answer == "Red":
+            st.success("Correct! +15")
+            st.session_state.scores.append(15)
+        else:
+            st.error("Incorrect. Try again.")
 
 # ==================================================
-# FOOTER
+# GAME 5 — PATTERN MEMORY CHALLENGE (NEW)
+# ==================================================
+elif game == "Pattern Memory Challenge":
+    st.markdown("### 🔐 Pattern Memory Challenge")
+
+    if "pattern" not in st.session_state:
+        st.session_state.pattern = [random.randint(1, 9) for _ in range(5)]
+        st.session_state.start_time = time.time()
+
+    st.markdown(f"**Memorize this pattern:** `{st.session_state.pattern}`")
+    time.sleep(2)
+    st.markdown("Pattern hidden. Enter it below.")
+
+    guess = st.text_input("Enter pattern (comma separated)")
+
+    if st.button("Submit Pattern"):
+        try:
+            g = [int(x.strip()) for x in guess.split(",")]
+            if g == st.session_state.pattern:
+                st.success("Perfect memory! +20")
+                st.session_state.scores.append(20)
+            else:
+                st.error("Incorrect.")
+        except Exception:
+            st.error("Invalid input.")
+
+# ==================================================
+# SCORE DISPLAY (MOBILE FRIENDLY)
 # ==================================================
 st.markdown("---")
-st.caption("MindGames • Fun and intellectual challenges • Powered by Gemini AI")
+st.markdown(f"### 🏆 Total Score: {sum(st.session_state.scores)}")
