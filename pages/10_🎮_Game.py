@@ -287,6 +287,8 @@ elif game == "Pattern Memory":
                 else:
                     st.error("Incorrect ❌")
                 st.session_state.step = "result"
+            except Exception:
+                st.error("Invalid input format. Use comma-separated numbers.")
 
     if st.session_state.step == "result":
         if st.button("Next ▶️"):
