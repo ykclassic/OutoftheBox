@@ -46,39 +46,65 @@ game = st.selectbox("Choose a Game", [
 if 'scores' not in st.session_state:
     st.session_state.scores = []
 
-# Game 1: Riddle Challenge (Updated with reason for correct answer)
+# ------------------------------
+# Game 1: Riddle Challenge (FIXED)
+# ------------------------------
 if game == "Riddle Challenge":
     st.header("🧠 Riddle Challenge")
     st.info("AI generates a riddle. Solve it for points!")
 
+    # Initialize state safely
+    if "current_riddle" not in st.session_state:
+        st.session_state.current_riddle = None
+        st.session_state.current_answer = None
+        st.session_state.current_reason = None
+        st.session_state.answered = False
+
+    # Generate riddle
     if st.button("Generate New Riddle"):
         with st.spinner("Crafting a clever riddle..."):
-            prompt = "Generate a fun, intellectual riddle with a clear answer and brief reason why it's correct. Format: Riddle: [riddle] Answer: [answer] Reason: [explanation]"
+            prompt = (
+                "Generate a fun, intellectual riddle with a clear answer and a short reason.\n"
+                "Format exactly as:\n"
+                "Riddle: <riddle>\n"
+                "Answer: <answer>\n"
+                "Reason: <reason>"
+            )
             response = model.generate_content(prompt)
-            riddle_text = response.text
-            
-            # Extract riddle, answer, and reason
-            if "Riddle:" in riddle_text and "Answer:" in riddle_text and "Reason:" in riddle_text:
-                riddle = riddle_text.split("Answer:")[0].replace("Riddle:", "").strip()
-                remaining = riddle_text.split("Answer:")[1]
-                answer = remaining.split("Reason:")[0].strip()
-                reason = remaining.split("Reason:")[1].strip()
-                
-                st.session_state.current_riddle = riddle
-                st.session_state.current_answer = answer.lower()
-                st.session_state.current_reason = reason
-            
-        st.markdown(f"### {st.session_state.current_riddle}")
-        
-        user_answer = st.text_input("Your answer")
-        if st.button("Submit Answer"):
-            if user_answer.lower() == st.session_state.current_answer:
+            text = getattr(response, "text", "").strip()
+
+            if "Riddle:" in text and "Answer:" in text and "Reason:" in text:
+                riddle_part = text.split("Answer:")[0].replace("Riddle:", "").strip()
+                answer_part = text.split("Answer:")[1].split("Reason:")[0].strip()
+                reason_part = text.split("Reason:")[1].strip()
+
+                st.session_state.current_riddle = riddle_part
+                st.session_state.current_answer = answer_part.lower()
+                st.session_state.current_reason = reason_part
+                st.session_state.answered = False
+            else:
+                st.error("AI response was not in the expected format.")
+
+    # Display riddle if available
+    if st.session_state.current_riddle:
+        st.markdown(f"### 🧩 {st.session_state.current_riddle}")
+
+        user_answer = st.text_input("Your answer", key="riddle_answer")
+
+        if st.button("Submit Answer") and not st.session_state.answered:
+            st.session_state.answered = True
+
+            if user_answer.strip().lower() == st.session_state.current_answer:
                 st.success("Correct! 🎉 +10 points")
                 st.session_state.scores.append(10)
             else:
-                st.error(f"Wrong! The correct answer is: {st.session_state.current_answer}")
-                st.markdown(f"### Why it's correct:\n{st.session_state.current_reason}")
+                st.error("Wrong answer ❌")
+                st.markdown(
+                    f"**Correct answer:** {st.session_state.current_answer}\n\n"
+                    f"**Reason:** {st.session_state.current_reason}"
+                )
                 st.session_state.scores.append(0)
+
 
 # Game 2: Custom Quiz Master
 elif game == "Custom Quiz Master":
