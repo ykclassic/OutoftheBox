@@ -13,3 +13,7 @@ replicate
 Pillow  # For mockups
 plotly
 pandas
+anthropic
+groq
+mistralai
+openai
