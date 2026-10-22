@@ -30,6 +30,9 @@ def test_background_removal_uses_external_secret_and_bounded_timeout() -> None:
     source = (ROOT / "pages" / "BgForge.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     assert "REMOVE_BG_API_KEY" in source
+    assert "StreamlitSecretNotFoundError" in source, (
+        "Missing local Streamlit secrets must fall back to the environment safely"
+    )
     assert "timeout=REQUEST_TIMEOUT_SECONDS" in source
     assert "AkeMEkvNP" not in source
     # Catch literal API-key assignments in the background remover module.
