@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import os
 from typing import Optional
@@ -84,9 +85,10 @@ def decode_provider_png(image_bytes: bytes) -> bytes:
     """Validate the provider output and return a normalized PNG."""
     try:
         with Image.open(io.BytesIO(image_bytes)) as source:
-            source.load()
-            if source.width * source.height > MAX_IMAGE_PIXELS:
+            width, height = source.size
+            if width <= 0 or height <= 0 or width * height > MAX_IMAGE_PIXELS:
                 raise ValueError("Provider output exceeds the supported dimensions.")
+            source.load()
             output = io.BytesIO()
             source.convert("RGBA").save(output, format="PNG")
             return output.getvalue()
@@ -129,6 +131,7 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     try:
         original_bytes = uploaded_file.getvalue()
+        source_digest = hashlib.sha256(original_bytes).hexdigest()
         original_image = decode_image(original_bytes)
     except ValueError as exc:
         st.error(str(exc))
@@ -150,13 +153,18 @@ if uploaded_file is not None:
             with st.spinner("Removing background…"):
                 processed_bytes = remove_background(original_bytes, api_key)
             st.session_state["bgforge_processed_bytes"] = processed_bytes
+            st.session_state["bgforge_source_digest"] = source_digest
             st.session_state["bgforge_source_name"] = uploaded_file.name.rsplit(".", 1)[0]
             st.success("Background removed.")
         except (RuntimeError, ValueError) as exc:
             st.session_state.pop("bgforge_processed_bytes", None)
             st.error(str(exc))
 
-    processed_bytes = st.session_state.get("bgforge_processed_bytes")
+    processed_bytes = (
+        st.session_state.get("bgforge_processed_bytes")
+        if st.session_state.get("bgforge_source_digest") == source_digest
+        else None
+    )
     if processed_bytes:
         with result_column:
             st.subheader("Transparent result")
