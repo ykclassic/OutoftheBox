@@ -10,6 +10,7 @@ from typing import Optional
 import requests
 import streamlit as st
 from PIL import Image, UnidentifiedImageError
+from streamlit.errors import StreamlitSecretNotFoundError
 
 API_URL = "https://api.remove.bg/v1.0/removebg"
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -22,7 +23,7 @@ def get_api_key() -> Optional[str]:
     """Read the provider key from Streamlit secrets or the environment."""
     try:
         value = st.secrets.get("REMOVE_BG_API_KEY")
-    except (AttributeError, FileNotFoundError):
+    except (AttributeError, FileNotFoundError, StreamlitSecretNotFoundError):
         value = None
     return value or os.getenv("REMOVE_BG_API_KEY")
 
