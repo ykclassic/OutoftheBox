@@ -21,7 +21,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="big-font">🪞 RegretMirror</p>', unsafe_allow_html=True)
-st.markdown('<p class="subheader">See your life from the deathbed — what you'll regret, what you'll be proud of.</p>', unsafe_allow_html=True)
+st.markdown("<p class=\"subheader\">See your life from the deathbed — what you'll regret, what you'll be proud of.</p>", unsafe_allow_html=True)
 
 st.markdown("<div class='warning-box'>This app simulates your future self at the end of life reflecting on today's choices. It's inspired by real regrets of the dying — use it for clarity, not fear.</div>", unsafe_allow_html=True)
 
