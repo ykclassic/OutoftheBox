@@ -5,8 +5,6 @@ import io
 import os
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────
-API_KEY = "AkeMEkvNPdCEXEQEJc1b9Bjs"           # ← Your remove.bg API key
-API_URL = "https://api.remove.bg/v1.0/removebg"
 
 st.set_page_config(
     page_title="Background Remover & Replacer",
