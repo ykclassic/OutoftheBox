@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Streamlit secrets (never commit real values)
+.streamlit/secrets.toml
+
+# Local outputs and uploads
+uploads/
+outputs/
+*.log
